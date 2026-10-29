@@ -34,7 +34,7 @@
 
 ## 2. Frontend Technical Requirements (Angular)
 
-* **Framework:** Angular 17+ (Standalone Components enabled).
+* **Framework:** Angular 22.
 * **UI Components:** **Angular Material CDK ONLY** (`@angular/cdk`) for accessibility, overlays, drag-and-drop (`@angular/cdk/drag-drop`), and dialogs.
 * **Styling Strict Constraint:** **NO external CSS framework** (e.g., Tailwind, Bootstrap, or Material Theme CSS). All styling must be written from scratch using modular **SCSS** with CSS Custom Properties (variables) for design tokens.
 * **Canvas Engine:** HTML5 2D Canvas context / Fabric.js wrapper optimized for high-DPI export (313 DPI rendering engine).
