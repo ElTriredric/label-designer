@@ -1,0 +1,115 @@
+<main class="editor">
+  <header>
+    <h1>{{ 'app.title' | transloco }}</h1><p>{{ 'app.subtitle' | transloco }}</p>
+    <label class="language">{{ 'app.language' | transloco }}
+      <select [ngModel]="language.current()" (ngModelChange)="changeLanguage($event)" [attr.aria-label]="'app.language' | transloco">
+        <option value="en">{{ 'app.english' | transloco }}</option><option value="de">{{ 'app.german' | transloco }}</option>
+      </select>
+    </label>
+  </header>
+  <section class="toolbar" [attr.aria-label]="'design.length' | transloco">
+    <label>{{ 'design.name' | transloco }} <input [(ngModel)]="name" /></label>
+    <label>{{ 'design.width' | transloco }} <select [(ngModel)]="widthMm" (ngModelChange)="dimensionsChanged()"><option *ngFor="let width of widths" [ngValue]="width">{{width}} mm</option></select></label>
+    <label>{{ 'design.length' | transloco }} <input type="number" min="10" max="432" [(ngModel)]="lengthMm" (change)="dimensionsChanged()" /></label>
+    <button (click)="newLabel()">{{ 'design.new' | transloco }}</button><button (click)="save()">{{ 'design.save' | transloco }}</button><button (click)="save(true)">{{ 'design.saveCopy' | transloco }}</button><button (click)="exportPng()">{{ 'design.download' | transloco }}</button>
+  </section>
+  <section class="layout">
+    <aside [attr.aria-label]="'tools.objects' | transloco">
+      <h2>{{ 'tools.objects' | transloco }}</h2>
+      <button (click)="addText()">{{ 'tools.addText' | transloco }}</button>
+      <label class="upload">{{ 'tools.importImage' | transloco }} <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" (change)="importImage($event)" /></label>
+      <button (click)="addShape('rect')">{{ 'tools.rectangle' | transloco }}</button><button (click)="addShape('circle')">{{ 'tools.circle' | transloco }}</button>
+      <button (click)="addShape('line')">{{ 'tools.line' | transloco }}</button><button (click)="addShape('frame')">{{ 'tools.frame' | transloco }}</button>
+      <div class="object-actions" [attr.aria-label]="'tools.objectActions' | transloco">
+        <button (click)="copySelected()" [disabled]="!selected" aria-keyshortcuts="Control+C Meta+C">{{ 'tools.copy' | transloco }}</button>
+        <button (click)="pasteCopy()" [disabled]="!hasCopy" aria-keyshortcuts="Control+V Meta+V">{{ 'tools.paste' | transloco }}</button>
+        <button (click)="cloneSelected()" [disabled]="!selected">{{ 'tools.clone' | transloco }}</button>
+      </div>
+      <h2>{{ 'tools.background' | transloco }}</h2>
+      <label>{{ 'tools.color' | transloco }} <input type="color" [(ngModel)]="background" (input)="setBackground()" /></label>
+      <button (click)="setGradient()">{{ 'tools.gradient' | transloco }}</button>
+      <section class="cut-controls" [attr.aria-label]="'cuts.title' | transloco">
+        <h2>{{ 'cuts.title' | transloco }}</h2>
+        <p>{{ 'cuts.help' | transloco }}</p>
+        <button (click)="addCutMarker()" [disabled]="!canAddCutMarker">{{ 'cuts.add' | transloco }}</button>
+        <p>{{ 'cuts.segmentCount' | transloco: { count: cutPositionsMm.length + 1 } }}</p>
+        <div class="cut-row" *ngFor="let marker of cutPositionsMm; let index = index">
+          <label>{{ 'cuts.position' | transloco: { number: index + 1 } }}
+            <input type="number" step="0.1" min="10" [max]="lengthMm - 10" [value]="marker" (change)="markerInputChanged(index, $event)" />
+          </label>
+          <button (click)="removeCutMarker(index)" [attr.aria-label]="'cuts.removeLabel' | transloco: { number: index + 1 }">{{ 'cuts.remove' | transloco }}</button>
+        </div>
+      </section>
+      <div *ngIf="selected" class="properties">
+        <h2>{{ 'tools.selected' | transloco }}</h2>
+        <p>{{ 'tools.dragHint' | transloco }}</p>
+        <label>{{ 'tools.fill' | transloco }} <input type="color" [(ngModel)]="color" (input)="editSelected('fill', color)" /></label>
+        <label>{{ 'tools.outline' | transloco }} <input type="color" [(ngModel)]="stroke" (input)="editSelected('stroke', stroke)" /></label>
+        <label>{{ 'tools.strokeWidth' | transloco }} <input type="number" min="0" max="20" [(ngModel)]="strokeWidth" (change)="editSelected('strokeWidth', strokeWidth)" /></label>
+        <ng-container *ngIf="selected.type === 'textbox' || selected.type === 'text'">
+          <label>{{ 'tools.font' | transloco }} <select [(ngModel)]="font" (change)="editSelected('fontFamily', font)"><option>Arial</option><option>Georgia</option><option>Courier New</option><option>Verdana</option><option>Times New Roman</option></select></label>
+          <label>{{ 'tools.size' | transloco }} <input type="number" min="4" max="300" [(ngModel)]="fontSize" (change)="editSelected('fontSize', fontSize)" /></label>
+          <label>{{ 'tools.textHighlight' | transloco }} <input type="color" (input)="editSelected('textBackgroundColor', $any($event.target).value)" /></label>
+          <label>{{ 'tools.align' | transloco }} <select [(ngModel)]="align" (change)="editSelected('textAlign', align)">
+            <option value="left">{{ 'tools.alignment.left' | transloco }}</option><option value="center">{{ 'tools.alignment.center' | transloco }}</option>
+            <option value="right">{{ 'tools.alignment.right' | transloco }}</option><option value="justify">{{ 'tools.alignment.justify' | transloco }}</option>
+          </select></label>
+          <button (click)="editSelected('fontWeight', selected.fontWeight === 'bold' ? 'normal' : 'bold')">{{ 'tools.bold' | transloco }}</button>
+          <button (click)="editSelected('fontStyle', selected.fontStyle === 'italic' ? 'normal' : 'italic')">{{ 'tools.italic' | transloco }}</button>
+          <button (click)="editSelected('underline', !selected.underline)">{{ 'tools.underline' | transloco }}</button>
+          <button (click)="editSelected('linethrough', !selected.linethrough)">{{ 'tools.strike' | transloco }}</button>
+        </ng-container>
+        <ng-container *ngIf="selected.type === 'image'">
+          <button (click)="editSelected('flipX', !selected.flipX)">{{ 'tools.flipH' | transloco }}</button><button (click)="editSelected('flipY', !selected.flipY)">{{ 'tools.flipV' | transloco }}</button>
+          <label>{{ 'tools.cropLeft' | transloco }} <input type="number" min="0" [ngModel]="selected.cropX || 0" (ngModelChange)="editSelected('cropX', +$event)" /></label>
+          <label>{{ 'tools.cropTop' | transloco }} <input type="number" min="0" [ngModel]="selected.cropY || 0" (ngModelChange)="editSelected('cropY', +$event)" /></label>
+          <label>{{ 'tools.cropWidth' | transloco }} <input type="number" min="1" [ngModel]="selected.width || 1" (ngModelChange)="editSelected('width', +$event)" /></label>
+          <label>{{ 'tools.cropHeight' | transloco }} <input type="number" min="1" [ngModel]="selected.height || 1" (ngModelChange)="editSelected('height', +$event)" /></label>
+        </ng-container>
+        <button (click)="rotate()">{{ 'tools.rotate' | transloco }}</button><button (click)="reorder('forward')">{{ 'tools.forward' | transloco }}</button>
+        <button (click)="reorder('backward')">{{ 'tools.backward' | transloco }}</button><button (click)="remove()" aria-keyshortcuts="Delete Backspace">{{ 'tools.deleteSelected' | transloco }}</button>
+      </div>
+    </aside>
+    <section class="main-area">
+      <div class="workspace" #workspace>
+        <div class="label-surface" #surface>
+          <canvas #canvasElement [attr.aria-label]="'design.canvas' | transloco"></canvas>
+          <button *ngFor="let marker of cutPositionsMm; let index = index" type="button" class="cut-marker"
+            [class.active]="selectedMarker === index" [style.left.%]="marker / lengthMm * 100"
+            [attr.aria-label]="'cuts.markerLabel' | transloco: { number: index + 1, position: marker }"
+            (pointerdown)="markerPointerDown(index, $event)" (pointermove)="markerPointerMove(index, $event)"
+            (pointerup)="markerPointerUp($event)" (pointercancel)="markerPointerUp($event)">
+            <span>{{index + 1}}</span>
+          </button>
+        </div>
+      </div>
+      <p>{{ 'design.dimensions' | transloco: { length: lengthMm, width: widthMm } }}</p>
+      <section class="printer" [attr.aria-label]="'printer.title' | transloco">
+        <h2>{{ 'printer.title' | transloco }}</h2>
+        <button (click)="refreshPrinters()">{{ 'printer.discover' | transloco }}</button>
+        <label>{{ 'printer.discovered' | transloco }} <select [(ngModel)]="printer"><option value="">{{ 'printer.select' | transloco }}</option><option *ngFor="let item of printers" [value]="item.ip">{{item.hostname}} ({{item.ip}})</option></select></label>
+        <label>{{ 'printer.manual' | transloco }} <input [(ngModel)]="manualAddress" placeholder="192.168.1.10" /></label><button (click)="connect()">{{ 'printer.connect' | transloco }}</button>
+        <button (click)="checkStatus()" [disabled]="!printer">{{ 'printer.checkStatus' | transloco }}</button>
+        <label>{{ 'printer.cut' | transloco }} <select [(ngModel)]="cut"><option value="full">{{ 'printer.cuts.full' | transloco }}</option><option value="half">{{ 'printer.cuts.half' | transloco }}</option><option value="none" [disabled]="cutPositionsMm.length > 0">{{ 'printer.cuts.none' | transloco }}</option></select></label>
+        <button (click)="print()" [disabled]="!printer || busy">{{ (busy ? 'printer.printing' : 'printer.print') | transloco }}</button>
+        <label *ngIf="busy || printStage === 'complete' || printStage === 'accepted' || printStage === 'partial'">
+          {{ ('printer.stage.' + printStage) | transloco }} · {{progress}}%
+          <small *ngIf="jobSegments > 1">{{ 'printer.segmentProgress' | transloco: { sent: jobSent, total: jobSegments } }}</small>
+          <progress [value]="progress" max="100" [attr.aria-label]="'printer.progress' | transloco"></progress>
+        </label>
+        <p role="status">{{ statusKey ? (statusKey | transloco: statusParams) : '' }}</p><p class="error" role="alert">{{ errorKey ? (errorKey | transloco: errorParams) : '' }}</p>
+      </section>
+    </section>
+    <aside class="library"><h2>{{ 'library.title' | transloco }}</h2><button [disabled]="!selectedIds.size" (click)="deleteSelected()">{{ 'library.deleteSelected' | transloco: { count: selectedIds.size } }}</button><p *ngIf="!labels.length">{{ 'library.empty' | transloco }}</p>
+      <div cdkDropList (cdkDropListDropped)="reorderCards($event)">
+        <article *ngFor="let label of labels" cdkDrag class="card">
+          <label><input type="checkbox" [checked]="selectedIds.has(label.id)" (change)="toggleCard(label.id, $any($event.target).checked)" /> {{ 'library.select' | transloco }}</label>
+          <img [src]="label.preview" [alt]="'library.preview' | transloco: { name: label.name }" />
+          <strong>{{label.name}}</strong><small>{{ 'library.dimensions' | transloco: { length: label.lengthMm, width: label.widthMm, date: (label.modified | date:'short':undefined:language.current()) } }}</small>
+          <small *ngIf="label.cutPositionsMm?.length">{{ 'cuts.segmentCount' | transloco: { count: label.cutPositionsMm.length + 1 } }}</small>
+          <button (click)="open(label)">{{ 'library.open' | transloco }}</button><button (click)="delete(label)">{{ 'library.delete' | transloco }}</button>
+        </article>
+      </div>
+    </aside>
+  </section>
+</main>
