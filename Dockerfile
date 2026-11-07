@@ -1,5 +1,4 @@
-FROM node:24-alpine AS frontend-build
-WORKDIR /app/frontend
+FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-buildWORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 # Fabric's optional native canvas dependency differs by OS; npm ci rejects the lock.
 RUN npm install --no-audit --no-fund
