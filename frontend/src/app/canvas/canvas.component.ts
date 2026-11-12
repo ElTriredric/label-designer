@@ -14,6 +14,7 @@ import { deleteLabel, listLabels, saveLabel, SavedLabel } from './label-store';
 const UNITS_PER_MM = 10;
 const DPI = 313;
 const WIDTHS = [9, 12, 19, 25, 50];
+const SUBNET_KEY = 'label-designer.scanSubnet';
 type Shape = FabricTypes.Object & { cropX?: number; cropY?: number; flipX?: boolean; flipY?: boolean; fontWeight?: string; fontStyle?: string; underline?: boolean; linethrough?: boolean };
 
 @Component({
@@ -52,7 +53,9 @@ export class CanvasComponent implements OnInit, OnDestroy {
   strokeWidth = 0;
   align = 'left';
   cut = 'full';
-  printers: { ip: string; hostname: string }[] = [];
+  printers: { ip: string; hostname: string; source?: string; verified?: boolean }[] = [];
+  scanning = false;
+  scanSubnet = CanvasComponent.storedSubnet();
   printer = '';
   manualAddress = '';
   statusKey = '';
@@ -474,6 +477,29 @@ export class CanvasComponent implements OnInit, OnDestroy {
       if (response.ok) this.printers = (await response.json()).printers;
     } catch { this.setStatus('printer.unavailable'); }
     finally { this.changeDetector.detectChanges(); }
+  }
+  private static storedSubnet(): string {
+    try { return localStorage.getItem(SUBNET_KEY) ?? ''; } catch { return ''; }
+  }
+  async discover(): Promise<void> {
+    if (this.scanning) return;
+    this.scanning = true; this.setError(''); this.changeDetector.detectChanges();
+    const subnet = this.scanSubnet.trim();
+    try { if (subnet) localStorage.setItem(SUBNET_KEY, subnet); else localStorage.removeItem(SUBNET_KEY); } catch { /* optional */ }
+    try {
+      const response = await fetch('/api/printers/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subnets: subnet ? subnet.split(/[\s,]+/).filter(Boolean) : [] }) });
+      const result = await response.json();
+      if (!response.ok) { this.setError('printer.invalidSubnet', { detail: result.detail || '' }); return; }
+      this.printers = result.printers;
+      if (result.hint === 'set_subnets') this.setStatus('printer.setSubnets');
+      else if (!result.printers.some((item: { verified?: boolean }) => item.verified))
+        this.setStatus('printer.noneFound', { subnets: result.subnets.join(', ') });
+      else this.setStatus('printer.found', { count: result.printers.filter((item: { verified?: boolean }) => item.verified).length,
+        subnets: result.subnets.join(', ') });
+      if (!this.printer) this.printer = result.printers.find((item: { verified?: boolean }) => item.verified)?.ip ?? '';
+    } catch { this.setStatus('printer.unavailable'); }
+    finally { this.scanning = false; this.changeDetector.detectChanges(); }
   }
   async connect(): Promise<void> {
     try {
