@@ -84,6 +84,16 @@ link-local; cap prefix at `/22` (1022 hosts) per subnet and 4096 hosts total →
 - Update `README.md` (how to find your subnet: `ipconfig` / `ip route`), `missing.md`,
   `docker_compose_specification.md` (no longer *requires* host mode).
 
+### 6. Production deployment (`ElTriredric/infrastructure.komodo`, `nodes/lenovo/komodo.label-designer.yaml`)
+The app runs behind Traefik on the external `web_traffic` bridge network. **Do not switch to
+`network_mode: host`**: Traefik reaches the container over `web_traffic`, and host mode would break that
+routing. Bridge mode is fine for the scan because outbound connections from the container to the LAN
+go through the Lenovo host's NAT. Changes required:
+- Add `- PRINTER_SCAN_SUBNETS=<LAN CIDR of the Lenovo host>` to `environment` (find the CIDR on the host with
+  `ip -4 route | grep -v docker`).
+- Redeploy the stack in Komodo with a fresh pull of `ghcr.io/eltriredric/label-designer:latest` once CI has published the new image.
+- If the printer is on a different VLAN than the Lenovo host, the router must allow TCP 9100 from the host to the printer.
+
 ## Tests (`backend/test_discovery.py`)
 - Subnet parsing/validation: rejects public, loopback, link-local, too large, malformed; accepts env list.
 - Interface auto-detect with mocked `ifaddr.get_adapters()`: host mode → LAN subnet;
