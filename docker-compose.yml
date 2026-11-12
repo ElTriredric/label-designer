@@ -1,16 +1,38 @@
 services:
-  vc500w-label-app:
+  # One-shot sidecar: host networking lets it see the Docker host's LAN
+  # interfaces. It writes the LAN subnet(s) to a shared volume and exits.
+  netdetect:
     image: ${LABEL_DESIGNER_IMAGE:-label-designer:local}
     build:
       context: .
       dockerfile: Dockerfile
+    network_mode: host
+    restart: "no"
+    command: ["python", "-m", "backend.detect_subnets", "/shared/subnets"]
+    # Optional: set PRINTER_SCAN_SUBNETS (e.g. 192.168.1.0/24) to override detection.
+    environment:
+      - PRINTER_SCAN_SUBNETS=${PRINTER_SCAN_SUBNETS:-}
+    volumes:
+      - netinfo:/shared
+
+  vc500w-label-app:
+    image: ${LABEL_DESIGNER_IMAGE:-label-designer:local}
     container_name: brother_color_label_app
     restart: unless-stopped
-    # Bridge networking works on Docker Desktop and Linux. Manual printer IP
-    # connections work; mDNS discovery may require host networking on Linux.
+    depends_on:
+      netdetect:
+        condition: service_completed_successfully
+    # Bridge networking: mDNS multicast does not reach the container, so
+    # "Discover printers" scans the subnet(s) found by netdetect via unicast.
     ports:
       - "8000:8000"
     environment:
       - PORT=8000
       - HOST=0.0.0.0
       - LOG_LEVEL=info
+      - PRINTER_SCAN_SUBNETS_FILE=/shared/subnets
+    volumes:
+      - netinfo:/shared:ro
+
+volumes:
+  netinfo:

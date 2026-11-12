@@ -86,8 +86,9 @@
       <p>{{ 'design.dimensions' | transloco: { length: lengthMm, width: widthMm } }}</p>
       <section class="printer" [attr.aria-label]="'printer.title' | transloco">
         <h2>{{ 'printer.title' | transloco }}</h2>
-        <button (click)="refreshPrinters()">{{ 'printer.discover' | transloco }}</button>
-        <label>{{ 'printer.discovered' | transloco }} <select [(ngModel)]="printer"><option value="">{{ 'printer.select' | transloco }}</option><option *ngFor="let item of printers" [value]="item.ip">{{item.hostname}} ({{item.ip}})</option></select></label>
+        <button (click)="discover()" [disabled]="scanning">{{ (scanning ? 'printer.searching' : 'printer.discover') | transloco }}</button>
+        <label>{{ 'printer.subnet' | transloco }} <input [(ngModel)]="scanSubnet" [placeholder]="'printer.subnetPlaceholder' | transloco" /></label>
+        <label>{{ 'printer.discovered' | transloco }} <select [(ngModel)]="printer"><option value="">{{ 'printer.select' | transloco }}</option><option *ngFor="let item of printers" [value]="item.ip">{{item.hostname}} ({{item.ip}}){{ item.verified === false ? ' · ' + ('printer.unverified' | transloco) : '' }}</option></select></label>
         <label>{{ 'printer.manual' | transloco }} <input [(ngModel)]="manualAddress" placeholder="192.168.1.10" /></label><button (click)="connect()">{{ 'printer.connect' | transloco }}</button>
         <button (click)="checkStatus()" [disabled]="!printer">{{ 'printer.checkStatus' | transloco }}</button>
         <label>{{ 'printer.cut' | transloco }} <select [(ngModel)]="cut"><option value="full">{{ 'printer.cuts.full' | transloco }}</option><option value="half">{{ 'printer.cuts.half' | transloco }}</option><option value="none" [disabled]="cutPositionsMm.length > 0">{{ 'printer.cuts.none' | transloco }}</option></select></label>

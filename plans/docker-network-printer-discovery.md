@@ -1,5 +1,14 @@
 # Plan: Printer Discovery on the Docker Host's Network
 
+## Status
+Implemented. Decisions taken during implementation:
+- Subnet source: a one-shot **`netdetect` sidecar** (`network_mode: host`, same image, `python -m backend.detect_subnets`)
+  writes the host's LAN subnet(s) to a shared volume; the app reads it via `PRINTER_SCAN_SUBNETS_FILE`.
+- Identification does **not** call `vc500w.get_config()` during a scan: sending XML to other raw port-9100
+  printers would print it. Instead the scan only opens/closes TCP 9100 (0 bytes) and confirms VC-500Ws via
+  unicast mDNS. Unconfirmed 9100 devices are listed as "not confirmed".
+- Printers with a running job are skipped by the scan.
+
 ## Problem
 "Discover printers" only lists what the zeroconf `ServiceBrowser` heard over mDNS
 (`backend/main.py:62-76`). mDNS is **multicast** (224.0.0.251:5353). With the default

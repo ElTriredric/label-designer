@@ -10,7 +10,7 @@ from pathlib import Path
 import socket
 import threading
 import uuid
-from . import vc500w
+from . import discovery, vc500w
 from .segments import split_raster
 
 from fastapi import FastAPI, HTTPException
@@ -48,7 +48,8 @@ class PrinterListener(ServiceListener):
                 continue
             if ip.version == 4 and ip.is_private:
                 with printer_lock:
-                    printers[str(ip)] = {"ip": str(ip), "hostname": name}
+                    printers[str(ip)] = {"ip": str(ip), "hostname": name, "source": "mdns",
+                                         "verified": "vc-500w" in name.lower()}
 
     def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
         self.add_service(zc, type_, name)
@@ -56,7 +57,7 @@ class PrinterListener(ServiceListener):
     def remove_service(self, zc: Zeroconf, type_: str, name: str) -> None:
         with printer_lock:
             for address, item in list(printers.items()):
-                if item["hostname"] == name:
+                if item["hostname"] == name and item.get("source") == "mdns":
                     del printers[address]
 
 
@@ -82,6 +83,10 @@ app = FastAPI(lifespan=lifespan)
 
 class Connection(BaseModel):
     address: str = Field(min_length=1, max_length=253)
+
+
+class ScanRequest(BaseModel):
+    subnets: list[str] = Field(default_factory=list, max_length=8)
 
 
 class PrintJob(BaseModel):
@@ -127,8 +132,57 @@ async def connect_printer(connection: Connection):
     except (OSError, vc500w.ProtocolError, vc500w.PrinterError) as exc:
         raise HTTPException(503, f'Cannot identify VC-500W: {exc}') from exc
     with printer_lock:
-        printers[ip] = {'ip': ip, 'hostname': connection.address}
+        hostname = printers.get(ip, {}).get('hostname', connection.address)
+        printers[ip] = {'ip': ip, 'hostname': hostname, 'source': 'manual', 'verified': True}
     return {'ip': ip, 'reachable': True, **config}
+
+
+scan_lock = asyncio.Lock()
+scan_cache: dict = {'key': None, 'at': 0.0, 'result': None}
+SCAN_CACHE_SECONDS = 10
+
+
+@app.get('/api/printers/scan/config')
+def scan_config():
+    subnets, source = discovery.configured_subnets()
+    return {'subnets': [str(s) for s in subnets], 'source': source}
+
+
+@app.post('/api/printers/scan')
+async def scan_printers(request: ScanRequest | None = None):
+    """Unicast scan of the LAN for VC-500Ws; works on a Docker bridge network."""
+    if request and request.subnets:
+        try:
+            subnets = discovery.parse_subnets(request.subnets)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        source = 'request'
+    else:
+        subnets, source = await asyncio.to_thread(discovery.configured_subnets)
+    if not subnets:
+        with printer_lock:
+            known = list(printers.values())
+        return {'printers': known, 'subnets': [], 'source': source, 'scanned': 0, 'hint': 'set_subnets'}
+    key = tuple(str(s) for s in subnets)
+    async with scan_lock:  # one sweep at a time; concurrent clicks reuse its result
+        loop = asyncio.get_running_loop()
+        if scan_cache['key'] == key and loop.time() - scan_cache['at'] < SCAN_CACHE_SECONDS:
+            found = scan_cache['result']
+        else:
+            with job_lock:
+                busy = set(active_printers)  # never touch a printer mid-job
+            found = await discovery.scan(subnets, skip=busy)
+            scan_cache.update(key=key, at=loop.time(), result=found)
+    with printer_lock:
+        for item in found:
+            existing = printers.get(item['ip'])
+            if existing and existing.get('source') in ('manual', 'mdns'):
+                existing['verified'] = existing.get('verified') or item['verified']
+            else:
+                printers[item['ip']] = dict(item)
+        known = list(printers.values())
+    return {'printers': known, 'subnets': list(key), 'source': source,
+            'scanned': sum(s.num_addresses - 2 for s in subnets), 'hint': None}
 
 
 @app.get('/api/printers/{address}/status')

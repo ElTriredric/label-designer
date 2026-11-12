@@ -8,7 +8,6 @@ services:
       dockerfile: Dockerfile
     container_name: brother_color_label_app
     restart: unless-stopped
-    network_mode: "host" # Required for mDNS/ZeroConf local printer discovery
     ports:
       - "8000:8000"
     environment:
