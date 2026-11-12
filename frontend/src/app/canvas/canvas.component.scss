@@ -14,7 +14,17 @@ button, .upload { display: inline-block; cursor: pointer; border: 1px solid var(
 button:hover, button:focus-visible { background: #d7eff2; } button:disabled { opacity: .5; cursor: default; }
 .upload input { width: 100%; font-size: .75rem; }
 .object-actions { display: flex; flex-wrap: wrap; margin-top: .5rem; padding: .5rem 0; border-top: 1px solid var(--line); }
-.properties { border-top: 1px solid var(--line); margin-top: 1rem; }
+.properties { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; padding: .75rem 1rem; margin: .5rem 0 1rem;
+  border: 1px solid var(--line); border-radius: 8px; background: #f7fafb; }
+.properties-head { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem; }
+.properties-head h2 { margin: 0; } .properties-head p { margin: 0; font-size: .82rem; color: #56657a; }
+.prop-group { display: flex; flex-wrap: wrap; align-items: end; gap: .2rem .6rem; padding-right: 1rem; border-right: 1px solid var(--line); }
+.prop-group:last-child { border-right: 0; padding-right: 0; }
+.prop-group label { margin: 0; min-width: 72px; white-space: nowrap; font-size: .82rem; }
+.prop-group label.narrow { width: 86px; } .prop-group label.wide { width: 150px; }
+.toggles { display: flex; flex-wrap: wrap; }
+.toggles button.on { background: var(--accent); color: white; }
+button.danger { border-color: #a30020; color: #a30020; } button.danger:hover, button.danger:focus-visible { background: #fbe3e7; }
 .workspace { padding: 16px; width: 100%; overflow: auto; min-height: 160px; background: #dae3e7; border-radius: 8px; }
 .label-surface { position: relative; box-shadow: 0 2px 9px #728594; }
 .workspace canvas { display: block; }

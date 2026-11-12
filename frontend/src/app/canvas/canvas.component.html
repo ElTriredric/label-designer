@@ -40,35 +40,6 @@
           <button (click)="removeCutMarker(index)" [attr.aria-label]="'cuts.removeLabel' | transloco: { number: index + 1 }">{{ 'cuts.remove' | transloco }}</button>
         </div>
       </section>
-      <div *ngIf="selected" class="properties">
-        <h2>{{ 'tools.selected' | transloco }}</h2>
-        <p>{{ 'tools.dragHint' | transloco }}</p>
-        <label>{{ 'tools.fill' | transloco }} <input type="color" [(ngModel)]="color" (input)="editSelected('fill', color)" /></label>
-        <label>{{ 'tools.outline' | transloco }} <input type="color" [(ngModel)]="stroke" (input)="editSelected('stroke', stroke)" /></label>
-        <label>{{ 'tools.strokeWidth' | transloco }} <input type="number" min="0" max="20" [(ngModel)]="strokeWidth" (change)="editSelected('strokeWidth', strokeWidth)" /></label>
-        <ng-container *ngIf="selected.type === 'textbox' || selected.type === 'text'">
-          <label>{{ 'tools.font' | transloco }} <select [(ngModel)]="font" (change)="editSelected('fontFamily', font)"><option>Arial</option><option>Georgia</option><option>Courier New</option><option>Verdana</option><option>Times New Roman</option></select></label>
-          <label>{{ 'tools.size' | transloco }} <input type="number" min="4" max="300" [(ngModel)]="fontSize" (change)="editSelected('fontSize', fontSize)" /></label>
-          <label>{{ 'tools.textHighlight' | transloco }} <input type="color" (input)="editSelected('textBackgroundColor', $any($event.target).value)" /></label>
-          <label>{{ 'tools.align' | transloco }} <select [(ngModel)]="align" (change)="editSelected('textAlign', align)">
-            <option value="left">{{ 'tools.alignment.left' | transloco }}</option><option value="center">{{ 'tools.alignment.center' | transloco }}</option>
-            <option value="right">{{ 'tools.alignment.right' | transloco }}</option><option value="justify">{{ 'tools.alignment.justify' | transloco }}</option>
-          </select></label>
-          <button (click)="editSelected('fontWeight', selected.fontWeight === 'bold' ? 'normal' : 'bold')">{{ 'tools.bold' | transloco }}</button>
-          <button (click)="editSelected('fontStyle', selected.fontStyle === 'italic' ? 'normal' : 'italic')">{{ 'tools.italic' | transloco }}</button>
-          <button (click)="editSelected('underline', !selected.underline)">{{ 'tools.underline' | transloco }}</button>
-          <button (click)="editSelected('linethrough', !selected.linethrough)">{{ 'tools.strike' | transloco }}</button>
-        </ng-container>
-        <ng-container *ngIf="selected.type === 'image'">
-          <button (click)="editSelected('flipX', !selected.flipX)">{{ 'tools.flipH' | transloco }}</button><button (click)="editSelected('flipY', !selected.flipY)">{{ 'tools.flipV' | transloco }}</button>
-          <label>{{ 'tools.cropLeft' | transloco }} <input type="number" min="0" [ngModel]="selected.cropX || 0" (ngModelChange)="editSelected('cropX', +$event)" /></label>
-          <label>{{ 'tools.cropTop' | transloco }} <input type="number" min="0" [ngModel]="selected.cropY || 0" (ngModelChange)="editSelected('cropY', +$event)" /></label>
-          <label>{{ 'tools.cropWidth' | transloco }} <input type="number" min="1" [ngModel]="selected.width || 1" (ngModelChange)="editSelected('width', +$event)" /></label>
-          <label>{{ 'tools.cropHeight' | transloco }} <input type="number" min="1" [ngModel]="selected.height || 1" (ngModelChange)="editSelected('height', +$event)" /></label>
-        </ng-container>
-        <button (click)="rotate()">{{ 'tools.rotate' | transloco }}</button><button (click)="reorder('forward')">{{ 'tools.forward' | transloco }}</button>
-        <button (click)="reorder('backward')">{{ 'tools.backward' | transloco }}</button><button (click)="remove()" aria-keyshortcuts="Delete Backspace">{{ 'tools.deleteSelected' | transloco }}</button>
-      </div>
     </aside>
     <section class="main-area">
       <div class="workspace" #workspace>
@@ -84,6 +55,47 @@
         </div>
       </div>
       <p>{{ 'design.dimensions' | transloco: { length: lengthMm, width: widthMm } }}</p>
+      <section class="properties" [attr.aria-label]="'tools.selected' | transloco">
+        <div class="properties-head">
+          <h2>{{ 'tools.selected' | transloco }}</h2>
+          <p>{{ (selected ? 'tools.dragHint' : 'tools.noSelection') | transloco }}</p>
+        </div>
+        <ng-container *ngIf="selected">
+          <div class="prop-group" role="group" [attr.aria-label]="'tools.style' | transloco">
+            <label>{{ 'tools.fill' | transloco }} <input type="color" [(ngModel)]="color" (input)="editSelected('fill', color)" /></label>
+            <label>{{ 'tools.outline' | transloco }} <input type="color" [(ngModel)]="stroke" (input)="editSelected('stroke', stroke)" /></label>
+            <label class="narrow">{{ 'tools.strokeWidth' | transloco }} <input type="number" min="0" max="20" [(ngModel)]="strokeWidth" (change)="editSelected('strokeWidth', strokeWidth)" /></label>
+          </div>
+          <div class="prop-group" role="group" *ngIf="selected.type === 'textbox' || selected.type === 'text'" [attr.aria-label]="'tools.text' | transloco">
+            <label class="wide">{{ 'tools.font' | transloco }} <select [(ngModel)]="font" (change)="editSelected('fontFamily', font)"><option>Arial</option><option>Georgia</option><option>Courier New</option><option>Verdana</option><option>Times New Roman</option></select></label>
+            <label class="narrow">{{ 'tools.size' | transloco }} <input type="number" min="4" max="300" [(ngModel)]="fontSize" (change)="editSelected('fontSize', fontSize)" /></label>
+            <label>{{ 'tools.textHighlight' | transloco }} <input type="color" (input)="editSelected('textBackgroundColor', $any($event.target).value)" /></label>
+            <label class="wide">{{ 'tools.align' | transloco }} <select [(ngModel)]="align" (change)="editSelected('textAlign', align)">
+              <option value="left">{{ 'tools.alignment.left' | transloco }}</option><option value="center">{{ 'tools.alignment.center' | transloco }}</option>
+              <option value="right">{{ 'tools.alignment.right' | transloco }}</option><option value="justify">{{ 'tools.alignment.justify' | transloco }}</option>
+            </select></label>
+            <div class="toggles">
+              <button [class.on]="selected.fontWeight === 'bold'" [attr.aria-pressed]="selected.fontWeight === 'bold'" (click)="editSelected('fontWeight', selected.fontWeight === 'bold' ? 'normal' : 'bold')"><b>{{ 'tools.bold' | transloco }}</b></button>
+              <button [class.on]="selected.fontStyle === 'italic'" [attr.aria-pressed]="selected.fontStyle === 'italic'" (click)="editSelected('fontStyle', selected.fontStyle === 'italic' ? 'normal' : 'italic')"><i>{{ 'tools.italic' | transloco }}</i></button>
+              <button [class.on]="!!selected.underline" [attr.aria-pressed]="!!selected.underline" (click)="editSelected('underline', !selected.underline)"><u>{{ 'tools.underline' | transloco }}</u></button>
+              <button [class.on]="!!selected.linethrough" [attr.aria-pressed]="!!selected.linethrough" (click)="editSelected('linethrough', !selected.linethrough)"><s>{{ 'tools.strike' | transloco }}</s></button>
+            </div>
+          </div>
+          <div class="prop-group" role="group" *ngIf="selected.type === 'image'" [attr.aria-label]="'tools.image' | transloco">
+            <div class="toggles"><button (click)="editSelected('flipX', !selected.flipX)">{{ 'tools.flipH' | transloco }}</button><button (click)="editSelected('flipY', !selected.flipY)">{{ 'tools.flipV' | transloco }}</button></div>
+            <label class="narrow">{{ 'tools.cropLeft' | transloco }} <input type="number" min="0" [ngModel]="selected.cropX || 0" (ngModelChange)="editSelected('cropX', +$event)" /></label>
+            <label class="narrow">{{ 'tools.cropTop' | transloco }} <input type="number" min="0" [ngModel]="selected.cropY || 0" (ngModelChange)="editSelected('cropY', +$event)" /></label>
+            <label class="narrow">{{ 'tools.cropWidth' | transloco }} <input type="number" min="1" [ngModel]="selected.width || 1" (ngModelChange)="editSelected('width', +$event)" /></label>
+            <label class="narrow">{{ 'tools.cropHeight' | transloco }} <input type="number" min="1" [ngModel]="selected.height || 1" (ngModelChange)="editSelected('height', +$event)" /></label>
+          </div>
+          <div class="prop-group" role="group" [attr.aria-label]="'tools.arrange' | transloco">
+            <div class="toggles">
+              <button (click)="rotate()">{{ 'tools.rotate' | transloco }}</button><button (click)="reorder('forward')">{{ 'tools.forward' | transloco }}</button>
+              <button (click)="reorder('backward')">{{ 'tools.backward' | transloco }}</button><button class="danger" (click)="remove()" aria-keyshortcuts="Delete Backspace">{{ 'tools.deleteSelected' | transloco }}</button>
+            </div>
+          </div>
+        </ng-container>
+      </section>
       <section class="printer" [attr.aria-label]="'printer.title' | transloco">
         <h2>{{ 'printer.title' | transloco }}</h2>
         <button (click)="refreshPrinters()">{{ 'printer.discover' | transloco }}</button>
